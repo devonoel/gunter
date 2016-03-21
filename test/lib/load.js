@@ -1,5 +1,6 @@
 var should = require('should');
 var load = require('../../lib/load');
+var path = require('path');
 
 describe('load', function(){
   beforeEach(function(){
@@ -221,7 +222,7 @@ describe('load', function(){
   });
 
   describe('when passed a file path', function(){
-    describe('when path leads to JSON file', function(){
+    describe('when path leads to .json file', function(){
       describe('when JSON is valid', function(){
         var filepath = '../test/fixtures/load/valid.json';
 
@@ -276,6 +277,82 @@ describe('load', function(){
 
       describe('when commands are not in an array', function(){
         var filepath = '../test/fixtures/load/commands-not-array.json';
+
+        it('throws an error', function(){
+          load.bind(null, filepath).should.throw();
+        });
+      });
+    });
+
+    describe('when path leads to a .yml file', function() {
+      describe('when valid', function(){
+        var filepath = path.join(__dirname, '../fixtures/load/valid.yml');
+
+        it('adds the tasks to the global taskList', function(){
+          load(filepath);
+          global.taskList.should.containEql({
+            "task1" : {
+              "remote" : "localhost",
+              "cwd" : "/",
+              "commands" : [
+                "echo I'm a task!",
+                "echo I'm another task!",
+                "echo Hello, my name is {{name}}"
+              ]
+            },
+            "task2" : {
+              "remote" : "localhost",
+              "cwd" : "/",
+              "commands" : [
+                "echo I'm a task!",
+                "echo I'm another task!",
+                "echo Hello, my name is {{name}}"
+              ]
+            }
+          });
+        });
+      });
+
+      describe('when invalid', function(){
+        var filepath = path.join(__dirname, '../fixtures/load/invalid.yml');
+
+        it('throws an error', function(){
+          load.bind(null, filepath).should.throw();
+        });
+      });
+    });
+
+    describe('when path leads to a .yaml file', function() {
+      describe('when valid', function(){
+        var filepath = path.join(__dirname, '../fixtures/load/valid.yaml');
+
+        it('adds the tasks to the global taskList', function(){
+          load(filepath);
+          global.taskList.should.containEql({
+            "task1" : {
+              "remote" : "localhost",
+              "cwd" : "/",
+              "commands" : [
+                "echo I'm a task!",
+                "echo I'm another task!",
+                "echo Hello, my name is {{name}}"
+              ]
+            },
+            "task2" : {
+              "remote" : "localhost",
+              "cwd" : "/",
+              "commands" : [
+                "echo I'm a task!",
+                "echo I'm another task!",
+                "echo Hello, my name is {{name}}"
+              ]
+            }
+          });
+        });
+      });
+
+      describe('when invalid', function(){
+        var filepath = path.join(__dirname, '../fixtures/load/invalid.yaml');
 
         it('throws an error', function(){
           load.bind(null, filepath).should.throw();
