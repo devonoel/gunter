@@ -13,7 +13,7 @@ in an arbitrary working directory on an arbitrary server.
 
 ## Usage
 
-Gunter requires you to define a set of tasks, represented as JSON, which tell
+Gunter requires you to define a set of tasks, represented as either YAML or JSON, which tell
 Gunter what commands to run, and where to run them.
 
 Install gunter:
@@ -28,19 +28,16 @@ var gunter = require('gunter');
 
 ## Defining Tasks
 
-Tasks are represented as JSON objects.  Here is a basic task:
-```json
-{
-  "taskname" : {
-    "remote" : "localhost",
-    "cwd" : "/",
-    "commands" : [
-      "echo I'm a task!",
-      "echo I'm another task!",
-      "echo Hello, my name is Gunter!"
-    ]
-  }
-}
+Tasks are represented as YAML or JSON.  Here is a basic task:
+```yaml
+taskname:
+  remote: "localhost"
+  cwd: "/"
+  commands: [
+    "echo I'm a task!",
+    "echo I'm another task!",
+    "echo Hello, my name is Gunter!"
+  ]
 ```
 
 + `remote` tells Gunter where to execute (either `localhost`, or some
@@ -53,21 +50,17 @@ Tasks are represented as JSON objects.  Here is a basic task:
 ## Variables
 
 Take a look at this task definition:
-```json
-{
-  "taskname" : {
-    "remote" : "localhost",
-    "cwd" : "/",
-    "commands" : [
-      "echo I'm a task!",
-      "echo I'm another task!",
-      "echo Hello, my name is {{name}}"
-    ],
-    "defaults" : {
-      "name" : "Gunter"
-    }
-  }
-}
+```yaml
+taskname:
+  defaults:
+    name: "Gunter"
+  remote: "localhost"
+  cwd: "/"
+  commands: [
+    "echo I'm a task!",
+    "echo I'm another task!",
+    "echo Hello, my name is {{name}}"
+  ]
 ```
 
 There are a couple differences from the one in [Defining Tasks](#defining-tasks).
@@ -88,22 +81,18 @@ some or all of these parameters, Gunter will use agent authentication, on port
 
 Here's an example of a task definition that includes an `auth` object:
 
-```json
-{
-  "taskname"   : {
-    "remote"   : "example.com",
-    "cwd"      : "/",
-    "commands" : [
-      "echo Holla!"
-    ],
-    "auth"     : {
-      "username"    : "dudeson",
-      "port"        : 22,
-      "password"    : "suP3rSekr3tp@$sw0rd",
-      "privateKey"  : "path/to/private/key"
-    }
-  }
-}
+```yaml
+taskname:
+  remote: "example.com"
+  cwd: "/"
+  commands: [
+    "echo Holla!"
+  ]
+  auth:
+    username: "dudeson"
+    port: 22
+    password: "suP3rSekr3tp@$sw0rd"
+    privateKey: "path/to/private/key"
 ```
 
 Note that your real password probably shouldn't contain the word "password",
@@ -113,11 +102,34 @@ If several forms of authentication are present, they will be tried in the
 following order until one is successful:
 **Password -> Private Key -> Agent**
 
+## YAML or JSON
+Whether you choose to define tasks as JSON or YAML is up to you and depends on
+your needs. If you'd like to load JSON directly into `.load`, you may find it
+easier to simply pass in a JSON object directly.  However, if you'd rather
+load them from a file, you may find that YAML is more DRY thanks to
+**repeated nodes**.
+
+For example, you could use **repeated nodes** to DRY up your tasks like so:
+```yaml
+default: &DEFAULT
+  remote: "localhost"
+  cwd: "/"
+  auth:
+    username: "cooluser"
+    password: "b@NaNat0wn"
+
+taskname:
+  <<: *DEFAULT
+  commands: [
+    "echo Hello, World!"
+  ]
+```
+
 ## API
 
 Gunter is a simple penguin.  Gunter only knows how to do a few things.
 
-### .load(tasks)
+### .load(tasks, ignore)
 
 Load tasks for execution.  Evaluates tasks for proper syntax, and will throw
 an error if anything is ill-defined.  You can call `load` several times, and it
@@ -131,10 +143,19 @@ confused and break.
 
 Type: `Object` or `String`
 
-You can pass `load` either an Object, or the path to a JSON file containing
-tasks like the example in [Defining Tasks](#defining-tasks). If passing `load`
-a filepath, its best that you use an absolute path for simplicity, as relative
-paths may not behave as you expect.
+You can pass `load` either an Object, or the path to a YAML/JSON file
+containing tasks like the example in [Defining Tasks](#defining-tasks). If
+passing `load` a filepath, its best that you use an absolute path for
+simplicity, as relative paths may not behave as you expect.
+
+#### ignore
+
+Type: `Array`
+
+An **optional** array of tasknames to ignore in `tasks`.  In case you want to
+define some objects for use in YAML repeated nodes. For example, in the
+[YAML or JSON](#yaml-or-json) section's task, you might include `["default"]`
+here to avoid registering a task called `default`
 
 ### .clear()
 
@@ -151,7 +172,7 @@ the exported `emitter` object to capture the `output` events.
 
 Type: `String`
 
-The name of the task to execute, as defined in a previously loaded JSON object.
+The name of the task to execute, as defined in a previously loaded object.
 
 #### event
 
@@ -170,11 +191,12 @@ probably want to give each a unique event you can monitor.
 Type: `Object` or `String`
 
 This parameter is for filling in variables defined in previously loaded
-JSON tasks.  Like `load`, it accepts either an Object or the path to a JSON
+tasks.  Like `load`, it accepts either an Object or the path to a YAML/JSON
 file.  Here you should pass in keys matching the variable names in your tasks,
 and values containing what they should be replaced by. If you have no variables
 to replace, just pass it an empty object `{}`.  Note that any variables you pass
-in here that aren't actually defined in your task will just get eaten at runtime.
+in here that aren't actually defined in your task will just get eaten at
+runtime.
 
 Example usage:
 ```js
@@ -184,7 +206,7 @@ Example usage:
 }
 ```
 
-### callback
+#### callback
 
 Type: `Function`
 
@@ -216,7 +238,7 @@ An `EventEmitter` object used by `exec` to asynchronously communicate its state.
 
 Gunter captures and emits all output from running tasks as a buffer.  This can
 be a little noisy, so its best to save this for some kind of verbose mode in your
-module, or write it to a log file.  
+module, or write it to a log file.
 
 How you should access these events depends on how you'll be calling `exec`.  If
 you're going to pass `exec` an `event`, setup a listener for that event.  If you're
@@ -239,6 +261,7 @@ To learn more about how events work, check out
 
 + ShellJS for running local commands
 + SSH2 for running remote commands
++ JS-YAML for parsing YAML files
 + Lo-Dash for not hating my life
 
 ## License
